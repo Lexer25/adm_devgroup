@@ -11,17 +11,16 @@
 - Три режима отображения: таблица, дерево, матрица
 - Древовидная структура групп
 
-## Установка
-
-1. Скопируйте модуль в `modules/devgroup`
-2. Добавьте в `bootstrap.php`: `'devgroup' => MODPATH.'devgroup'`
-3. Выполните SQL-скрипт для создания таблицы:
-
-```sql
-CREATE TABLE DEVGROUP (
-    ID_DEVGROUP  INTEGER NOT NULL,
-    ID_DB        INTEGER DEFAULT 1 NOT NULL,
-    ID_DEV       INTEGER,
-    NAME         VARCHAR(50),
-    ID_PARENT    INTEGER DEFAULT 1 NOT NULL
-);
+modules/devgroup/
+├── classes/
+│   ├── Controller/
+│   │   └── Devgroup.php
+│   └── Model/
+│       └── Devgroupm.php
+├── views/
+│   └── devgroup/
+│       ├── index.php
+│       ├── add.php
+│       └── edit.php
+├── init.php
+└── README.md

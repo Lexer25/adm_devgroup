@@ -11,23 +11,23 @@ class Controller_Devgroup extends Controller_Template
         View::bind_global('is_admin', $this->is_admin);
     }
 
-    /**
-     * Главная страница с деревом
-     */
-    public function action_index()
-    {
-        $model = Model::factory('Devgroupm');
-        
-        // Получаем корневые группы (ID_PARENT = 1)
-        $rootGroups = $model->getGroupsByParent(1);
+/**
+ * Главная страница с деревом
+ */
+public function action_index()
+{
+    $model = Model::factory('Devgroupm');
+    
+    // Получаем корневые группы (используем новый метод)
+    $rootGroups = $model->getRootGroups();
 
-        $content = View::factory('devgroup/index', array(
-            'rootGroups' => $rootGroups,
-            'is_admin' => $this->is_admin,
-        ));
+    $content = View::factory('devgroup/index', array(
+        'rootGroups' => $rootGroups,
+        'is_admin' => $this->is_admin,
+    ));
 
-        $this->template->content = $content;
-    }
+    $this->template->content = $content;
+}
 
     /**
      * AJAX: получить дочерние группы

@@ -2,6 +2,15 @@
 
 class Model_Devgroupm extends Model
 {
+    // ID групп, у которых не может быть дочерних элементов
+    private $forbiddenParentIds = array(1, 2, 3);
+    
+    // ID групп, которые скрыты из отображения
+    private $hiddenGroupIds = array(1);
+    
+    // ID групп, которые должны быть в начале списка (в порядке приоритета)
+    private $priorityGroupIds = array(2, 3);
+
     /**
      * Преобразование ключей массива из верхнего регистра в нижний
      * и конвертация кодировки из Windows-1251 в UTF-8
@@ -29,23 +38,111 @@ class Model_Devgroupm extends Model
     }
 
     /**
+     * Проверяет, может ли группа иметь дочерние элементы
+     */
+    private function canHaveChildren($groupId)
+    {
+        return !in_array($groupId, $this->forbiddenParentIds);
+    }
+
+    /**
+     * Проверяет, скрыта ли группа из отображения
+     */
+    private function isHiddenGroup($groupId)
+    {
+        return in_array($groupId, $this->hiddenGroupIds);
+    }
+
+    /**
+     * Проверяет, является ли группа приоритетной
+     */
+    private function isPriorityGroup($groupId)
+    {
+        return in_array($groupId, $this->priorityGroupIds);
+    }
+
+    /**
+     * Сортирует группы: сначала приоритетные, потом остальные по имени
+     */
+    private function sortGroupsWithPriority($groups)
+    {
+        $priority = array();
+        $normal = array();
+
+        foreach ($groups as $group) {
+            if ($this->isPriorityGroup($group['id_devgroup'])) {
+                $priority[] = $group;
+            } else {
+                $normal[] = $group;
+            }
+        }
+
+        // Сортируем приоритетные по порядку в массиве $priorityGroupIds
+        usort($priority, function($a, $b) {
+            $posA = array_search($a['id_devgroup'], $this->priorityGroupIds);
+            $posB = array_search($b['id_devgroup'], $this->priorityGroupIds);
+            return $posA - $posB;
+        });
+
+        // Сортируем обычные по имени
+        usort($normal, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        return array_merge($priority, $normal);
+    }
+
+    /**
      * Получить группы по родителю (для AJAX дерева)
+     * Исключаем скрытые группы и группы с запрещенными родителями
      */
     public function getGroupsByParent($parentId)
     {
+        // Если родитель в запрещенном списке - возвращаем пустой результат
+        if (!$this->canHaveChildren($parentId)) {
+            return array();
+        }
+
         $sql = 'SELECT dg.id_devgroup, dg.id_db, dg.name, dg.id_parent,
                        (SELECT COUNT(*) FROM devgroup dg2 WHERE dg2.id_parent = dg.id_devgroup AND dg2.id_dev IS NULL) as child_count,
                        (SELECT COUNT(*) FROM devgroup dg3 WHERE dg3.id_parent = dg.id_devgroup AND dg3.id_dev IS NOT NULL) as device_count
                 FROM devgroup dg
                 WHERE dg.id_parent = ' . intval($parentId) . '
                 AND dg.id_dev IS NULL
-                ORDER BY dg.name';
+                AND dg.id_devgroup NOT IN (' . implode(',', $this->hiddenGroupIds) . ')';
 
         $query = DB::query(Database::SELECT, $sql)
             ->execute(Database::instance('fb'))
             ->as_array();
 
-        return $this->convertToUtf8($query);
+        $groups = $this->convertToUtf8($query);
+        
+        // Сортируем с приоритетом
+        return $this->sortGroupsWithPriority($groups);
+    }
+
+    /**
+     * Получить корневые группы (с ID_PARENT = 1)
+     * Исключаем скрытые группы
+     */
+    public function getRootGroups()
+    {
+        $sql = 'SELECT dg.id_devgroup, dg.id_db, dg.name, dg.id_parent,
+                       (SELECT COUNT(*) FROM devgroup dg2 WHERE dg2.id_parent = dg.id_devgroup AND dg2.id_dev IS NULL) as child_count,
+                       (SELECT COUNT(*) FROM devgroup dg3 WHERE dg3.id_parent = dg.id_devgroup AND dg3.id_dev IS NOT NULL) as device_count
+                FROM devgroup dg
+                WHERE dg.id_parent = 1
+                AND dg.id_dev IS NULL
+                AND dg.id_devgroup NOT IN (' . implode(',', $this->hiddenGroupIds) . ')';
+
+        $query = DB::query(Database::SELECT, $sql)
+            ->execute(Database::instance('fb'))
+            ->as_array();
+
+        $groups = $this->convertToUtf8($query);
+        
+        // Сортируем с приоритетом
+        return $this->sortGroupsWithPriority($groups);
     }
 
     /**
@@ -72,6 +169,11 @@ class Model_Devgroupm extends Model
      */
     public function getDevGroupById($id)
     {
+        // Если группа скрыта - возвращаем null
+        if ($this->isHiddenGroup($id)) {
+            return null;
+        }
+
         $sql = 'SELECT dg.id_devgroup, dg.id_db, dg.name, dg.id_parent
                 FROM devgroup dg
                 WHERE dg.id_devgroup = ' . intval($id);
@@ -139,15 +241,16 @@ class Model_Devgroupm extends Model
 
     /**
      * Получить все группы для выпадающего списка (родители)
+     * Исключаем скрытые группы и группы с ID 1, 2, 3
      */
     public function getParentOptions($excludeId = null)
     {
         $options = array();
         
-        // Получаем все группы (корневые и дочерние)
         $sql = 'SELECT dg.id_devgroup, dg.name
                 FROM devgroup dg
                 WHERE dg.id_dev IS NULL
+                AND dg.id_devgroup NOT IN (' . implode(',', array_merge($this->forbiddenParentIds, $this->hiddenGroupIds)) . ')
                 ORDER BY dg.name';
 
         $query = DB::query(Database::SELECT, $sql)
@@ -168,9 +271,16 @@ class Model_Devgroupm extends Model
 
     /**
      * Добавить новую группу устройств
+     * Проверяем, что родитель не в запрещенном списке
      */
     public function addDevGroup($name, $parentId = 1, $dbId = 1)
     {
+        // Проверяем, может ли родитель иметь дочерние группы
+        if (!$this->canHaveChildren($parentId)) {
+            Kohana::$log->add(Log::ERROR, 'Attempt to add child to forbidden group: ' . $parentId);
+            return false;
+        }
+
         $nameForDb = iconv('UTF-8', 'Windows-1251//IGNORE', $name);
         $nameForDb = addslashes($nameForDb);
 
@@ -194,9 +304,16 @@ class Model_Devgroupm extends Model
 
     /**
      * Обновить группу устройств
+     * Проверяем, что новый родитель не в запрещенном списке
      */
     public function updateDevGroup($id, $name, $parentId = 1, $dbId = 1)
     {
+        // Проверяем, может ли новый родитель иметь дочерние группы
+        if (!$this->canHaveChildren($parentId)) {
+            Kohana::$log->add(Log::ERROR, 'Attempt to move group to forbidden parent: ' . $parentId);
+            return false;
+        }
+
         $nameForDb = iconv('UTF-8', 'Windows-1251//IGNORE', $name);
         $nameForDb = addslashes($nameForDb);
 
@@ -219,9 +336,22 @@ class Model_Devgroupm extends Model
 
     /**
      * Удалить группу устройств
+     * Запрещаем удаление скрытых групп
      */
     public function deleteDevGroup($id)
     {
+        // Запрещаем удаление скрытых групп
+        if ($this->isHiddenGroup($id)) {
+            Kohana::$log->add(Log::ERROR, 'Attempt to delete hidden group: ' . $id);
+            return false;
+        }
+
+        // Запрещаем удаление групп с ID 1, 2, 3
+        if (in_array($id, $this->forbiddenParentIds)) {
+            Kohana::$log->add(Log::ERROR, 'Attempt to delete forbidden group: ' . $id);
+            return false;
+        }
+
         try {
             $db = Database::instance('fb');
 
@@ -255,9 +385,16 @@ class Model_Devgroupm extends Model
 
     /**
      * Добавить устройства в группу
+     * Проверяем, что группа может содержать устройства
      */
     public function addDevicesToGroup($groupId, $deviceIds)
     {
+        // Проверяем, может ли группа иметь дочерние элементы
+        if (!$this->canHaveChildren($groupId)) {
+            Kohana::$log->add(Log::ERROR, 'Attempt to add devices to forbidden group: ' . $groupId);
+            return false;
+        }
+
         try {
             $db = Database::instance('fb');
 
@@ -313,6 +450,11 @@ class Model_Devgroupm extends Model
      */
     public function groupExists($id)
     {
+        // Если группа скрыта - считаем, что её не существует
+        if ($this->isHiddenGroup($id)) {
+            return false;
+        }
+
         $sql = "SELECT COUNT(*) as cnt FROM devgroup WHERE id_devgroup = " . intval($id);
 
         $result = DB::query(Database::SELECT, $sql)

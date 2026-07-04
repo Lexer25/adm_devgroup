@@ -108,7 +108,7 @@ class Controller_Devgroup extends Controller_Template
 
             $name = Arr::get($post, 'name');
             $parentId = Arr::get($post, 'id_parent', 1);
-            $dbId = Arr::get($post, 'id_db', 1);
+            $dbId = 1; // Всегда 1
 
             $errors = array();
             if (empty($name)) {
@@ -166,7 +166,7 @@ class Controller_Devgroup extends Controller_Template
 
             $name = Arr::get($post, 'name');
             $parentId = Arr::get($post, 'id_parent', 1);
-            $dbId = Arr::get($post, 'id_db', 1);
+            $dbId = 1; // Всегда 1
 
             $errors = array();
             if (empty($name)) {

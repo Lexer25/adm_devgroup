@@ -54,13 +54,6 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="id_db"><?php echo __('ID_DB'); ?></label>
-                                <input type="number" class="form-control" id="id_db" name="id_db"
-                                       value="<?php echo isset($post['id_db']) ? intval($post['id_db']) : $group['id_db']; ?>"
-                                       <?php echo $is_admin ? '' : 'disabled'; ?>>
-                            </div>
-
-                            <div class="form-group">
                                 <?php if ($is_admin): ?>
                                     <button type="submit" class="btn btn-primary"><?php echo __('Сохранить'); ?></button>
                                 <?php endif; ?>
@@ -142,8 +135,8 @@
                                                 <?php echo $is_admin ? '' : 'disabled'; ?>>
                                         </th>
                                         <th width="10%"><?php echo __('ID устройства'); ?></th>
-                                        <th width="70%"><?php echo __('Название'); ?></th>
-                                        <th width="15%"><?php echo __('Действия'); ?></th>
+                                        <th width="75%"><?php echo __('Название'); ?></th>
+                                        <th width="10%"><?php echo __('Действия'); ?></th>
                                     </tr>
                                 </thead>
                                 <tbody id="assignedDevicesBody">

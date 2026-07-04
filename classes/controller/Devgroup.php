@@ -147,80 +147,80 @@ public function action_index()
         $this->template->content = $content;
     }
 
-    /**
-     * Редактирование группы
-     */
-    public function action_edit()
-    {
-        $id = $this->request->param('id');
-        $model = Model::factory('Devgroupm');
+/**
+ * Редактирование группы
+ */
+public function action_edit()
+{
+    $id = $this->request->param('id');
+    $model = Model::factory('Devgroupm');
 
-        if ($id === null || !$model->groupExists($id)) {
+    if ($id === null || !$model->groupExists($id)) {
+        $this->redirect('devgroup');
+    }
+
+    $group = $model->getDevGroupById($id);
+
+    if ($this->request->method() == HTTP_Request::POST) {
+        $post = $this->request->post();
+
+        $name = Arr::get($post, 'name');
+        $parentId = Arr::get($post, 'id_parent', 1);
+        $dbId = 1;
+
+        $errors = array();
+        if (empty($name)) {
+            $errors['name'] = __('Название группы обязательно');
+        }
+
+        if ($parentId == $id) {
+            $errors['id_parent'] = __('Группа не может быть родителем самой себя');
+        }
+
+        if ($model->hasChildren($id)) {
+            $childIds = $this->getChildGroupIds($id);
+            if (in_array($parentId, $childIds)) {
+                $errors['id_parent'] = __('Группа не может быть родителем своей дочерней группы');
+            }
+        }
+
+        if (empty($errors)) {
+            $result = $model->updateDevGroup($id, $name, $parentId, $dbId);
+
+            if ($result) {
+                Session::instance()->set('message', __('Группа устройств успешно обновлена'));
+                Session::instance()->set('message_type', 'success');
+            } else {
+                Session::instance()->set('message', __('Ошибка при обновлении группы устройств'));
+                Session::instance()->set('message_type', 'danger');
+            }
+
             $this->redirect('devgroup');
         }
 
-        $group = $model->getDevGroupById($id);
-
-        if ($this->request->method() == HTTP_Request::POST) {
-            $post = $this->request->post();
-
-            $name = Arr::get($post, 'name');
-            $parentId = Arr::get($post, 'id_parent', 1);
-            $dbId = 1; // Всегда 1
-
-            $errors = array();
-            if (empty($name)) {
-                $errors['name'] = __('Название группы обязательно');
-            }
-
-            if ($parentId == $id) {
-                $errors['id_parent'] = __('Группа не может быть родителем самой себя');
-            }
-
-            if ($model->hasChildren($id)) {
-                $childIds = $this->getChildGroupIds($id);
-                if (in_array($parentId, $childIds)) {
-                    $errors['id_parent'] = __('Группа не может быть родителем своей дочерней группы');
-                }
-            }
-
-            if (empty($errors)) {
-                $result = $model->updateDevGroup($id, $name, $parentId, $dbId);
-
-                if ($result) {
-                    Session::instance()->set('message', __('Группа устройств успешно обновлена'));
-                    Session::instance()->set('message_type', 'success');
-                } else {
-                    Session::instance()->set('message', __('Ошибка при обновлении группы устройств'));
-                    Session::instance()->set('message_type', 'danger');
-                }
-
-                $this->redirect('devgroup');
-            }
-
-            $content = View::factory('devgroup/edit', array(
-                'group' => $group,
-                'errors' => $errors,
-                'post' => $post,
-                'parents' => $model->getParentOptions($id),
-                'groupDevices' => $model->getDevicesByGroupId($id),
-                'availableDevices' => $model->getAvailableDevices($id),
-                'is_admin' => $this->is_admin,
-            ));
-        } else {
-            $content = View::factory('devgroup/edit', array(
-                'group' => $group,
-                'errors' => array(),
-                'post' => array(),
-                'parents' => $model->getParentOptions($id),
-                'groupDevices' => $model->getDevicesByGroupId($id),
-                'availableDevices' => $model->getAvailableDevices($id),
-                'is_admin' => $this->is_admin,
-            ));
-        }
-
-        $this->template->content = $content;
+        $content = View::factory('devgroup/edit', array(
+            'group' => $group,
+            'errors' => $errors,
+            'post' => $post,
+            'parents' => $model->getParentOptions($id),
+            'groupDevices' => $model->getDevicesByGroupId($id),
+            'availableDevices' => $model->getAvailableDevices($id),
+            'is_admin' => $this->is_admin,
+        ));
+    } else {
+        $content = View::factory('devgroup/edit', array(
+            'group' => $group,
+            'errors' => array(),
+            'post' => array(),
+            'parents' => $model->getParentOptions($id),
+            'groupDevices' => $model->getDevicesByGroupId($id),
+            'availableDevices' => $model->getAvailableDevices($id),
+            'is_admin' => $this->is_admin,
+        ));
     }
+
+    $this->template->content = $content;
+}
 
     /**
      * Удаление группы
@@ -330,4 +330,26 @@ public function action_index()
 
         return $ids;
     }
+	
+	/**
+ * AJAX: сохранение режима отображения в сессии
+ */
+public function action_setEditMode()
+{
+    $this->auto_render = false;
+    header('Content-Type: application/json');
+
+    if ($this->request->method() != HTTP_Request::POST) {
+        echo json_encode(array('success' => false));
+        return;
+    }
+
+    $mode = $this->request->post('mode');
+    if (in_array($mode, array('classic', 'compact'))) {
+        Session::instance()->set('devgroup_edit_mode', $mode);
+        echo json_encode(array('success' => true));
+    } else {
+        echo json_encode(array('success' => false));
+    }
+}
 }

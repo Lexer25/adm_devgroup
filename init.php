@@ -1,6 +1,6 @@
 <?php defined('SYSPATH') OR die('No direct script access.');
 
-defined('DEVGROUP_VERSION') OR define('DEVGROUP_VERSION', '1.0.0');
+defined('DEVGROUP_VERSION') OR define('DEVGROUP_VERSION', '1.0.1');
 
 Kohana::$config->load('adm')
     ->set('devgroup', array(
@@ -36,3 +36,7 @@ Route::set('devgroup_addDevices', 'devgroup/addDevices')
 
 Route::set('devgroup_removeDevices', 'devgroup/removeDevices')
     ->defaults(array('controller' => 'Devgroup', 'action' => 'removeDevices'));
+	
+	// AJAX маршрут для сохранения режима отображения
+Route::set('devgroup_setEditMode', 'devgroup/setEditMode')
+    ->defaults(array('controller' => 'Devgroup', 'action' => 'setEditMode'));

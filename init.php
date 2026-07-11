@@ -7,7 +7,7 @@ Kohana::$config->load('adm')
         'title' => 'Группы устройств',
         'url' => 'devgroup',
         'icon' => 'fa-sitemap',
-        'order' => 90,
+        'order' => 50,
     ));
 
 // Основной маршрут

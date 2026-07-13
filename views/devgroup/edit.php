@@ -104,15 +104,40 @@
                     <!-- Добавление устройств -->
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            <h4 class="panel-title"><?php echo __('Добавить устройства'); ?></h4>
+                            <h4 class="panel-title">
+                                <?php echo __('Добавить устройства'); ?>
+                                <span class="pull-right">
+                                    <span class="text-muted" style="font-size: 11px; font-weight: normal;">
+                                        <span id="availableCount"><?php echo count($availableDevices); ?></span> доступно
+                                    </span>
+                                </span>
+                            </h4>
                         </div>
                         <div class="panel-body">
+                            <!-- Поле поиска -->
+                            <div class="row" style="margin-bottom: 10px;">
+                                <div class="col-md-12">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>
+                                        <input type="text" id="availableDevicesSearch" class="form-control" placeholder="Поиск по названию или ID...">
+                                        <span class="input-group-btn">
+                                            <button class="btn btn-default" type="button" id="clearAvailableSearch">
+                                                <span class="glyphicon glyphicon-remove"></span>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <span class="help-block" style="margin-bottom: 0; font-size: 11px; color: #999;">
+                                        <span id="searchResultsCount">0</span> найдено
+                                    </span>
+                                </div>
+                            </div>
+                            
                             <div class="row">
                                 <div class="col-md-8">
                                     <select id="availableDevicesSelect" class="form-control" multiple size="10" style="height: 200px;"
                                         <?php echo $is_admin ? '' : 'disabled title="' . __('Доступно только администраторам') . '"'; ?>>
                                         <?php foreach ($availableDevices as $device): ?>
-                                            <option value="<?php echo $device['id_dev']; ?>">
+                                            <option value="<?php echo $device['id_dev']; ?>" data-search="<?php echo strtolower($device['id_dev'] . ' ' . $device['name']); ?>">
                                                 [<?php echo $device['id_dev']; ?>] <?php echo htmlspecialchars($device['name']); ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -123,6 +148,11 @@
                                         <?php echo $is_admin ? '' : 'disabled title="' . __('Доступно только администраторам') . '"'; ?>>
                                         <span class="glyphicon glyphicon-arrow-right"></span> <?php echo __('Добавить'); ?>
                                     </button>
+                                    <?php if ($is_admin): ?>
+                                        <button type="button" id="addAllDevices" class="btn btn-info btn-block" style="margin-top: 5px;">
+                                            <span class="glyphicon glyphicon-plus"></span> <?php echo __('Добавить все'); ?>
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <div class="row" style="margin-top: 10px;">
@@ -135,62 +165,85 @@
                         </div>
                     </div>
 
-                    <!-- Устройства в группе -->
-                    <div class="panel panel-default" style="margin-top: 15px;">
-                        <div class="panel-heading">
-                            <h4 class="panel-title">
-                                <?php echo __('Устройства в группе'); ?>
-                                <div class="btn-group pull-right">
-                                    <button type="button" id="removeSelectedDevices" class="btn btn-xs btn-danger"
-                                        <?php echo $is_admin ? '' : 'disabled title="' . __('Доступно только администраторам') . '"'; ?>>
-                                        <span class="glyphicon glyphicon-remove"></span> <?php echo __('Удалить'); ?>
-                                    </button>
-                                </div>
-                            </h4>
-                        </div>
-                        <div class="panel-body" style="padding: 0;">
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover table-condensed table-bordered" style="margin-bottom: 0;">
-                                    <thead>
-                                        <tr class="active">
-                                            <th width="5%">
-                                                <input type="checkbox" id="selectAllAssigned"
-                                                    <?php echo $is_admin ? '' : 'disabled'; ?>>
-                                            </th>
-                                            <th width="10%"><?php echo __('ID устройства'); ?></th>
-                                            <th width="75%"><?php echo __('Название'); ?></th>
-                                            <th width="10%"><?php echo __('Действия'); ?></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="assignedDevicesBody">
-                                        <?php if (count($groupDevices) > 0): ?>
-                                            <?php foreach ($groupDevices as $device): ?>
-                                                <tr data-id="<?php echo $device['id_dev']; ?>">
-                                                    <td class="text-center">
-                                                        <input type="checkbox" class="assigned-checkbox" value="<?php echo $device['id_dev']; ?>"
-                                                            <?php echo $is_admin ? '' : 'disabled'; ?>>
-                                                    </td>
-                                                    <td><?php echo $device['id_dev']; ?></td>
-                                                    <td><?php echo htmlspecialchars($device['name']); ?></td>
-                                                    <td>
-                                                        <a href="<?php echo URL::site('door/doorInfo/' . $device['id_dev']); ?>" class="btn btn-xs btn-info" target="_blank">
-                                                            <span class="glyphicon glyphicon-info-sign"></span>
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                            <tr id="noAssignedDataRow">
-                                                <td colspan="4" class="text-center text-muted">
-                                                    <?php echo __('Нет устройств в этой группе'); ?>
-                                                </td>
-                                            </tr>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                   <!-- Устройства в группе -->
+<div class="panel panel-default" style="margin-top: 15px;">
+    <div class="panel-heading">
+        <h4 class="panel-title">
+            <?php echo __('Устройства в группе'); ?>
+            <span class="pull-right">
+                <span class="text-muted" style="font-size: 11px; font-weight: normal;">
+                    <span id="assignedCount"><?php echo count($groupDevices); ?></span> устройств
+                </span>
+            </span>
+        </h4>
+    </div>
+    <div class="panel-body" style="padding: 0;">
+        <!-- Панель с поиском и кнопкой Удалить -->
+        <div style="padding: 8px 10px; background: #f9f9f9; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>
+                    <input type="text" id="assignedDevicesSearch" class="form-control" placeholder="Поиск по названию или ID...">
+                    <span class="input-group-btn">
+                        <button class="btn btn-default" type="button" id="clearAssignedSearch">
+                            <span class="glyphicon glyphicon-remove"></span>
+                        </button>
+                    </span>
+                </div>
+                <span class="help-block" style="margin-bottom: 0; font-size: 11px; color: #999;">
+                    <span id="assignedSearchResults">0</span> найдено
+                </span>
+            </div>
+            <div style="flex-shrink: 0;">
+                <button type="button" id="removeSelectedDevices" class="btn btn-danger btn-sm"
+                    <?php echo $is_admin ? '' : 'disabled title="' . __('Доступно только администраторам') . '"'; ?>>
+                    <span class="glyphicon glyphicon-remove"></span> <?php echo __('Удалить'); ?>
+                </button>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-striped table-hover table-condensed table-bordered" style="margin-bottom: 0;">
+                <thead>
+                    <tr class="active">
+                        <th width="5%">
+                            <input type="checkbox" id="selectAllAssigned"
+                                <?php echo $is_admin ? '' : 'disabled'; ?>>
+                        </th>
+                        <th width="10%"><?php echo __('ID устройства'); ?></th>
+                        <th width="75%"><?php echo __('Название'); ?></th>
+                        <th width="10%"><?php echo __('Действия'); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="assignedDevicesBody">
+                    <?php if (count($groupDevices) > 0): ?>
+                        <?php foreach ($groupDevices as $device): ?>
+                            <tr data-id="<?php echo $device['id_dev']; ?>" data-search="<?php echo strtolower($device['id_dev'] . ' ' . $device['name']); ?>">
+                                <td class="text-center">
+                                    <input type="checkbox" class="assigned-checkbox" value="<?php echo $device['id_dev']; ?>"
+                                        <?php echo $is_admin ? '' : 'disabled'; ?>>
+                                </td>
+                                <td><?php echo $device['id_dev']; ?></td>
+                                <td><?php echo htmlspecialchars($device['name']); ?></td>
+                                <td>
+                                    <a href="<?php echo URL::site('door/doorInfo/' . $device['id_dev']); ?>" class="btn btn-xs btn-info" target="_blank">
+                                        <span class="glyphicon glyphicon-info-sign"></span>
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr id="noAssignedDataRow">
+                            <td colspan="4" class="text-center text-muted">
+                                <?php echo __('Нет устройств в этой группе'); ?>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
                 </div>
 
                 <!-- Компактный режим - один список с чекбоксами -->
@@ -200,16 +253,38 @@
                             <h4 class="panel-title">
                                 <?php echo __('Точки прохода'); ?>
                                 <span class="pull-right">
-                                    <button type="button" id="selectAllBtn" class="btn btn-xs btn-default" <?php echo $is_admin ? '' : 'disabled'; ?>>
-                                        <span class="glyphicon glyphicon-check"></span> Выбрать все
-                                    </button>
-                                    <button type="button" id="deselectAllBtn" class="btn btn-xs btn-default" <?php echo $is_admin ? '' : 'disabled'; ?>>
-                                        <span class="glyphicon glyphicon-unchecked"></span> Снять все
-                                    </button>
+                                    <span class="text-muted" style="font-size: 11px; font-weight: normal;">
+                                        <span id="compactCount"><?php echo count($groupDevices); ?></span> в группе
+                                    </span>
                                 </span>
                             </h4>
                         </div>
                         <div class="panel-body" style="padding: 0;">
+                            <!-- Поле поиска для компактного режима -->
+                            <div style="padding: 10px; background: #f9f9f9; border-bottom: 1px solid #ddd;">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>
+                                            <input type="text" id="compactSearch" class="form-control" placeholder="Поиск по названию или ID...">
+                                            <span class="input-group-btn">
+                                                <button class="btn btn-default" type="button" id="clearCompactSearch">
+                                                    <span class="glyphicon glyphicon-remove"></span>
+                                                </button>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <button type="button" id="selectAllBtn" class="btn btn-xs btn-default" <?php echo $is_admin ? '' : 'disabled'; ?>>
+                                            <span class="glyphicon glyphicon-check"></span> Выбрать все
+                                        </button>
+                                        <button type="button" id="deselectAllBtn" class="btn btn-xs btn-default" <?php echo $is_admin ? '' : 'disabled'; ?>>
+                                            <span class="glyphicon glyphicon-unchecked"></span> Снять все
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <?php if ($is_admin): ?>
                                 <div class="alert alert-info" style="margin: 10px;">
                                     <span class="glyphicon glyphicon-info-sign"></span>
@@ -263,7 +338,7 @@
                                         
                                         <?php if (count($allDevices) > 0): ?>
                                             <?php foreach ($allDevices as $device): ?>
-                                                <tr data-id="<?php echo $device['id_dev']; ?>" data-in-group="<?php echo $device['in_group'] ? '1' : '0'; ?>">
+                                                <tr data-id="<?php echo $device['id_dev']; ?>" data-in-group="<?php echo $device['in_group'] ? '1' : '0'; ?>" data-search="<?php echo strtolower($device['id_dev'] . ' ' . $device['name']); ?>">
                                                     <td class="text-center">
                                                         <?php if ($is_admin): ?>
                                                             <input type="checkbox" class="device-checkbox" value="<?php echo $device['id_dev']; ?>"
@@ -322,6 +397,148 @@ $(document).ready(function() {
     
     var groupId = <?php echo json_encode($group['id_devgroup']); ?>;
     var currentMode = '<?php echo Session::instance()->get("devgroup_edit_mode", "classic"); ?>';
+    var allAvailableDevices = [];
+    
+    // Сохраняем все доступные устройства для фильтрации
+    $('#availableDevicesSelect option').each(function() {
+        allAvailableDevices.push({
+            value: $(this).val(),
+            text: $(this).text(),
+            search: $(this).data('search')
+        });
+    });
+    
+    // ========== Поиск в списке доступных устройств ==========
+    function filterAvailableDevices(searchTerm) {
+        searchTerm = searchTerm.toLowerCase().trim();
+        var $select = $('#availableDevicesSelect');
+        var visibleCount = 0;
+        
+        if (!searchTerm) {
+            // Показываем все
+            $select.find('option').show();
+            visibleCount = $select.find('option').length;
+        } else {
+            $select.find('option').each(function() {
+                var searchData = $(this).data('search') || '';
+                if (searchData.indexOf(searchTerm) !== -1) {
+                    $(this).show();
+                    visibleCount++;
+                } else {
+                    $(this).hide();
+                }
+            });
+        }
+        
+        $('#searchResultsCount').text(visibleCount);
+        
+        // Если ничего не найдено, показываем сообщение
+        if (visibleCount === 0 && searchTerm) {
+            if ($select.find('option[data-empty="true"]').length === 0) {
+                $select.append('<option value="" disabled data-empty="true" style="color: #999; font-style: italic;">Ничего не найдено</option>');
+            }
+        } else {
+            $select.find('option[data-empty="true"]').remove();
+        }
+    }
+    
+    $('#availableDevicesSearch').on('keyup', function() {
+        filterAvailableDevices($(this).val());
+    });
+    
+    $('#clearAvailableSearch').on('click', function() {
+        $('#availableDevicesSearch').val('');
+        filterAvailableDevices('');
+    });
+    
+    // ========== Поиск в списке устройств в группе ==========
+    function filterAssignedDevices(searchTerm) {
+        searchTerm = searchTerm.toLowerCase().trim();
+        var $tbody = $('#assignedDevicesBody');
+        var visibleCount = 0;
+        
+        if (!searchTerm) {
+            // Показываем все строки
+            $tbody.find('tr').show();
+            visibleCount = $tbody.find('tr:not(#noAssignedDataRow)').length;
+        } else {
+            $tbody.find('tr').each(function() {
+                var searchData = $(this).data('search') || '';
+                if (searchData.indexOf(searchTerm) !== -1) {
+                    $(this).show();
+                    visibleCount++;
+                } else {
+                    $(this).hide();
+                }
+            });
+        }
+        
+        $('#assignedSearchResults').text(visibleCount);
+        
+        // Если ничего не найдено, показываем сообщение
+        if (visibleCount === 0 && searchTerm) {
+            var $emptyRow = $tbody.find('tr.empty-search-assigned');
+            if ($emptyRow.length === 0) {
+                $tbody.append('<tr class="empty-search-assigned"><td colspan="4" class="text-center text-muted">Ничего не найдено</td></tr>');
+            }
+        } else {
+            $tbody.find('tr.empty-search-assigned').remove();
+        }
+        
+        // Обновляем состояние чекбокса "Выбрать все"
+        var totalVisible = $tbody.find('tr:visible:not(.empty-search-assigned)').length;
+        var checkedVisible = $tbody.find('tr:visible .assigned-checkbox:checked').length;
+        if (totalVisible > 0) {
+            $('#selectAllAssigned').prop('checked', totalVisible === checkedVisible);
+        }
+    }
+    
+    $('#assignedDevicesSearch').on('keyup', function() {
+        filterAssignedDevices($(this).val());
+    });
+    
+    $('#clearAssignedSearch').on('click', function() {
+        $('#assignedDevicesSearch').val('');
+        filterAssignedDevices('');
+    });
+    
+    // ========== Поиск в компактном режиме ==========
+    function filterCompactDevices(searchTerm) {
+        searchTerm = searchTerm.toLowerCase().trim();
+        var visibleCount = 0;
+        
+        $('#devicesBody tr').each(function() {
+            var searchData = $(this).data('search') || '';
+            if (!searchTerm || searchData.indexOf(searchTerm) !== -1) {
+                $(this).show();
+                visibleCount++;
+            } else {
+                $(this).hide();
+            }
+        });
+        
+        // Обновляем счетчик
+        $('#compactCount').text($('#devicesBody tr:visible .device-checkbox:checked').length);
+        
+        // Если ничего не найдено, показываем сообщение
+        if (visibleCount === 0 && searchTerm) {
+            var $empty = $('#devicesBody tr.empty-search');
+            if ($empty.length === 0) {
+                $('#devicesBody').append('<tr class="empty-search"><td colspan="4" class="text-center text-muted">Ничего не найдено</td></tr>');
+            }
+        } else {
+            $('#devicesBody tr.empty-search').remove();
+        }
+    }
+    
+    $('#compactSearch').on('keyup', function() {
+        filterCompactDevices($(this).val());
+    });
+    
+    $('#clearCompactSearch').on('click', function() {
+        $('#compactSearch').val('');
+        filterCompactDevices('');
+    });
     
     // ========== Переключение режимов ==========
     function switchMode(mode) {
@@ -347,6 +564,8 @@ $(document).ready(function() {
             $('#viewCompact').show();
             $('#viewModeCompact').addClass('active btn-primary');
             $('#viewModeClassic').removeClass('active btn-primary');
+            // Обновляем счетчик в компактном режиме
+            updateCompactCount();
         }
     }
     
@@ -372,6 +591,8 @@ $(document).ready(function() {
     function updateSelectedCount() {
         // Для классического режима
         $("#selectedCount").text(selectedDevices.length);
+        $("#assignedCount").text(selectedDevices.length);
+        $("#availableCount").text($('#availableDevicesSelect option:visible').length);
     }
 
     function updateAssignedTable() {
@@ -381,6 +602,8 @@ $(document).ready(function() {
         if (selectedDevices.length === 0) {
             $tbody.append('<tr id="noAssignedDataRow"><td colspan="4" class="text-center text-muted"><?php echo __('Нет устройств в этой группе'); ?></td></tr>');
             updateSelectedCount();
+            // Обновляем поиск
+            filterAssignedDevices($('#assignedDevicesSearch').val());
             return;
         }
 
@@ -408,6 +631,7 @@ $(document).ready(function() {
             if (device) {
                 var $row = $('<tr>');
                 $row.attr('data-id', device.id);
+                $row.attr('data-search', (device.id + ' ' + device.name).toLowerCase());
                 $row.html(
                     '<td class="text-center"><input type="checkbox" class="assigned-checkbox" value="' + device.id + '"' + checkboxDisabled + '></td>' +
                     '<td>' + device.id + '</td>' +
@@ -419,6 +643,8 @@ $(document).ready(function() {
         }
 
         updateSelectedCount();
+        // Применяем текущий фильтр
+        filterAssignedDevices($('#assignedDevicesSearch').val());
     }
 
     function updateAvailableDevices() {
@@ -430,13 +656,22 @@ $(document).ready(function() {
             var deviceName = <?php echo json_encode(htmlspecialchars($device['name'])); ?>;
 
             if (selectedDevices.indexOf(deviceId) === -1) {
-                $select.append('<option value="' + deviceId + '">[' + deviceId + '] ' + deviceName + '</option>');
+                var option = $('<option>', {
+                    value: deviceId,
+                    text: '[' + deviceId + '] ' + deviceName,
+                    'data-search': (deviceId + ' ' + deviceName).toLowerCase()
+                });
+                $select.append(option);
             }
         <?php endforeach; ?>
+        
+        // Применяем текущий фильтр
+        filterAvailableDevices($('#availableDevicesSearch').val());
+        updateSelectedCount();
     }
 
     $("#addSelectedDevices").on("click", function() {
-        var selectedOptions = $("#availableDevicesSelect option:selected");
+        var selectedOptions = $("#availableDevicesSelect option:selected:visible");
         var added = false;
         var devicesToAdd = [];
 
@@ -493,9 +728,64 @@ $(document).ready(function() {
             alert("<?php echo __('Выбранные устройства уже добавлены'); ?>");
         }
     });
+    
+    // Добавить все устройства
+    $("#addAllDevices").on("click", function() {
+        var visibleOptions = $("#availableDevicesSelect option:visible");
+        var devicesToAdd = [];
+        
+        visibleOptions.each(function() {
+            var deviceId = Number($(this).val());
+            if (deviceId && selectedDevices.indexOf(deviceId) === -1) {
+                devicesToAdd.push(deviceId);
+            }
+        });
+        
+        if (devicesToAdd.length === 0) {
+            alert("<?php echo __('Нет доступных устройств для добавления'); ?>");
+            return;
+        }
+        
+        if (confirm("<?php echo __('Добавить все '); ?>" + devicesToAdd.length + " <?php echo __('устройств в группу?'); ?>")) {
+            $.ajax({
+                url: "<?php echo URL::site('devgroup/addDevices'); ?>",
+                type: "POST",
+                data: {
+                    group_id: Number(<?php echo json_encode($group['id_devgroup']); ?>),
+                    devices: devicesToAdd
+                },
+                dataType: "json",
+                cache: false,
+                beforeSend: function() {
+                    $("#addAllDevices").prop("disabled", true).text("<?php echo __('Добавление...'); ?>");
+                },
+                success: function(response) {
+                    if (response.success) {
+                        for (var i = 0; i < devicesToAdd.length; i++) {
+                            if (selectedDevices.indexOf(devicesToAdd[i]) === -1) {
+                                selectedDevices.push(devicesToAdd[i]);
+                            }
+                        }
+                        updateAssignedTable();
+                        updateAvailableDevices();
+                        updateCompactView();
+                        alert("<?php echo __('Все устройства успешно добавлены'); ?>");
+                    } else {
+                        alert(response.error || "<?php echo __('Ошибка при добавлении устройств'); ?>");
+                    }
+                },
+                error: function() {
+                    alert("<?php echo __('Ошибка при добавлении устройств'); ?>");
+                },
+                complete: function() {
+                    $("#addAllDevices").prop("disabled", false).text("<?php echo __('Добавить все'); ?>");
+                }
+            });
+        }
+    });
 
     $("#removeSelectedDevices").on("click", function() {
-        var checkedBoxes = $(".assigned-checkbox:checked");
+        var checkedBoxes = $(".assigned-checkbox:visible:checked");
         var removed = false;
         var devicesToRemove = [];
 
@@ -551,12 +841,12 @@ $(document).ready(function() {
 
     $("#selectAllAssigned").on("change", function() {
         var isChecked = $(this).prop("checked");
-        $(".assigned-checkbox").prop("checked", isChecked);
+        $(".assigned-checkbox:visible").prop("checked", isChecked);
     });
 
     $(document).on("change", ".assigned-checkbox", function() {
-        var total = $(".assigned-checkbox").length;
-        var checked = $(".assigned-checkbox:checked").length;
+        var total = $(".assigned-checkbox:visible").length;
+        var checked = $(".assigned-checkbox:visible:checked").length;
         $("#selectAllAssigned").prop("checked", total === checked && total > 0);
     });
 
@@ -583,14 +873,19 @@ $(document).ready(function() {
         
         // Обновляем счетчик
         updateSelectedCount();
+        updateCompactCount();
         
         // Обновляем состояние "Выбрать все"
         updateSelectAllState();
     }
+    
+    function updateCompactCount() {
+        $('#compactCount').text($('.device-checkbox:checked').length);
+    }
 
     function updateSelectAllState() {
-        var total = $('.device-checkbox').length;
-        var checked = $('.device-checkbox:checked').length;
+        var total = $('.device-checkbox:visible').length;
+        var checked = $('.device-checkbox:visible:checked').length;
         var $selectAll = $('#selectAllCheckbox');
         
         if (total === 0) {
@@ -610,7 +905,7 @@ $(document).ready(function() {
 
     function saveDevices() {
         var checkedDevices = [];
-        $('.device-checkbox:checked').each(function() {
+        $('.device-checkbox:visible:checked').each(function() {
             checkedDevices.push(Number($(this).val()));
         });
         
@@ -733,25 +1028,29 @@ $(document).ready(function() {
     // События компактного режима
     $(document).on('change', '.device-checkbox', function() {
         updateSelectedCount();
+        updateCompactCount();
         updateSelectAllState();
     });
     
     $('#selectAllBtn').on('click', function() {
-        $('.device-checkbox').prop('checked', true);
+        $('.device-checkbox:visible').prop('checked', true);
         updateSelectedCount();
+        updateCompactCount();
         updateSelectAllState();
     });
     
     $('#deselectAllBtn').on('click', function() {
-        $('.device-checkbox').prop('checked', false);
+        $('.device-checkbox:visible').prop('checked', false);
         updateSelectedCount();
+        updateCompactCount();
         updateSelectAllState();
     });
     
     $('#selectAllCheckbox').on('change', function() {
         var isChecked = $(this).prop('checked');
-        $('.device-checkbox').prop('checked', isChecked);
+        $('.device-checkbox:visible').prop('checked', isChecked);
         updateSelectedCount();
+        updateCompactCount();
         updateSelectAllState();
     });
     
@@ -764,11 +1063,14 @@ $(document).ready(function() {
     updateAssignedTable();
     updateSelectedCount();
     updateSelectAllState();
+    updateCompactCount();
+    filterAssignedDevices('');
     
     <?php else: ?>
     // Для не-администраторов
     var count = $('.device-checkbox:checked').length;
     $('#selectedCount').text(count);
+    $('#compactCount').text(count);
     <?php endif; ?>
 });
 </script>
@@ -804,5 +1106,9 @@ $(document).ready(function() {
 .panel-heading .btn-group .btn {
     font-size: 11px;
     padding: 3px 8px;
+}
+#availableDevicesSelect option:disabled {
+    color: #999;
+    font-style: italic;
 }
 </style>

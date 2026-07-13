@@ -30,7 +30,7 @@ public function action_index()
 }
 
     /**
-     * AJAX: получить дочерние группы
+     * AJAX: получить дочерние группы и устройства
      */
     public function action_getChildren()
     {
@@ -49,17 +49,29 @@ public function action_index()
         // Получаем дочерние группы
         $groups = $model->getGroupsByParent($parentId);
         
-        // Для каждой группы получаем устройства
+        // Получаем устройства в этой группе
+        $devices = $model->getDevicesByGroup($parentId);
+        
+        // Формируем результат: сначала группы, потом устройства
         $result = array();
+        
+        // Добавляем группы
         foreach ($groups as $group) {
-            $devices = $model->getDevicesByGroup($group['id_devgroup']);
             $result[] = array(
                 'id' => $group['id_devgroup'],
                 'name' => $group['name'],
                 'has_children' => ($group['child_count'] > 0),
                 'device_count' => $group['device_count'],
-                'devices' => $devices,
                 'is_group' => true
+            );
+        }
+        
+        // Добавляем устройства
+        foreach ($devices as $device) {
+            $result[] = array(
+                'id' => $device['id_dev'],
+                'name' => $device['name'],
+                'is_group' => false
             );
         }
 

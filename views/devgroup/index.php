@@ -168,7 +168,7 @@ $(document).ready(function() {
         }
     }
 
-    // Загрузка дочерних элементов
+    // Загрузка дочерних элементов (включая устройства)
     function loadChildren($li) {
         var groupId = $li.data('group-id');
         var $childrenContainer = $li.children('ul.tree-children');
@@ -222,6 +222,8 @@ $(document).ready(function() {
                         var hasDevices = false;
                         var deviceCount = 0;
                         var html = '';
+                        
+                        // Сначала выводим дочерние папки
                         $.each(response.data, function(idx, item) {
                             if (item.is_group) {
                                 hasChildGroups = true;
@@ -264,8 +266,12 @@ $(document).ready(function() {
                                 html += '</div>';
                                 html += '<ul class="tree-children" style="display: none;"></ul>';
                                 html += '</li>';
-                            } else {
-                                // Устройство
+                            }
+                        });
+                        
+                        // Затем выводим устройства (если они есть)
+                        $.each(response.data, function(idx, item) {
+                            if (!item.is_group) {
                                 hasDevices = true;
                                 deviceCount++;
                                 html += '<li class="tree-device">';
@@ -276,13 +282,19 @@ $(document).ready(function() {
                                 html += '</div></li>';
                             }
                         });
+                        
                         $childrenContainer.html(html);
                         
                         // Обновляем иконку текущей папки
                         if (hasChildGroups) {
                             updateFolderIcon($node, true, false, 0);
                             $node.data('has-children', 'true');
-                            $node.data('has-devices', 'false');
+                            // Если есть устройства, сохраняем этот факт
+                            if (hasDevices) {
+                                $node.data('has-devices', 'true');
+                            } else {
+                                $node.data('has-devices', 'false');
+                            }
                         } else if (hasDevices) {
                             updateFolderIcon($node, false, true, deviceCount);
                             $node.data('has-children', 'false');

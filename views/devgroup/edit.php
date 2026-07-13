@@ -1,4 +1,9 @@
-<div class="panel panel-primary">
+<?php
+//echo Debug::vars('2-2 parents', $parents);//exit;
+//echo Debug::vars('2-2 groupDevices', $groupDevices);//exit;
+//echo Debug::vars('2-2 availableDevices', $availableDevices);//exit;
+
+?><div class="panel panel-primary">
     <div class="panel-heading">
         <h3 class="panel-title">
             <?php echo __('Редактирование группы устройств'); ?>

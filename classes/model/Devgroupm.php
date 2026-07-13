@@ -3,7 +3,7 @@
 class Model_Devgroupm extends Model
 {
     // ID групп, у которых не может быть дочерних элементов
-    private $forbiddenParentIds = array(1, 2, 3);
+    private $forbiddenParentIds = array(2, 3);
     
     // ID групп, которые скрыты из отображения
     private $hiddenGroupIds = array(1);
@@ -134,7 +134,7 @@ class Model_Devgroupm extends Model
                 WHERE dg.id_parent = 1
                 AND dg.id_dev IS NULL
                 AND dg.id_devgroup NOT IN (' . implode(',', $this->hiddenGroupIds) . ')';
-
+//echo Debug::vars('137', $sql);exit;
         $query = DB::query(Database::SELECT, $sql)
             ->execute(Database::instance('fb'))
             ->as_array();
@@ -214,23 +214,25 @@ class Model_Devgroupm extends Model
      */
     public function getAvailableDevices($excludeGroupId = null)
     {
-        $sql = 'SELECT d.id_dev, d.name
+     
+
+	 $sql = 'SELECT d.id_dev, d.name, d.id_reader
                 FROM device d
-                WHERE d.id_dev NOT IN (
-                    SELECT dg.id_dev FROM devgroup dg WHERE dg.id_dev IS NOT NULL
-                )';
+                WHERE d.id_reader is not null';
 
         if ($excludeGroupId !== null) {
-            $sql = 'SELECT d.id_dev, d.name
+            $sql = 'SELECT d.id_dev, d.name, d.id_reader
                     FROM device d
-                    WHERE d.id_dev NOT IN (
+                    WHERE d.id_reader is not null
+                    and d.id_dev NOT IN (
                         SELECT dg.id_dev FROM devgroup dg
                         WHERE dg.id_dev IS NOT NULL
-                        AND dg.id_parent != ' . intval($excludeGroupId) . '
+                        AND dg.id_parent = ' . intval($excludeGroupId) . '
                     )';
         }
 
-        $sql .= ' ORDER BY d.name';
+        $sql .= ' and d.id_reader is not null
+				ORDER BY d.name';
 
         $query = DB::query(Database::SELECT, $sql)
             ->execute(Database::instance('fb'))
